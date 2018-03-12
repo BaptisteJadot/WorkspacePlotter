@@ -35,6 +35,7 @@ classdef WORKSPACE_PLOTTER_OOP < handle
         STEP2
         MEASURE_LINE_TXT
         MEASURE_LINE
+        LOADING_SCRIPT
         USING_RAWDATA
         USING_DERIVATIVE
         SMOOTH
@@ -335,6 +336,16 @@ classdef WORKSPACE_PLOTTER_OOP < handle
                                 'Position'                  , [0.845 0.57 0.12 0.08],...
                                 'tag'                       , 'MEASURE_LINE');
                             
+           app.LOADING_SCRIPT = uicontrol('style'           , 'checkbox', ...
+                                'backgroundcolor'          , Background_Color, ...
+                                'string'                   , 'Use script', ...
+                                'fontweight'               , 'bold', ...
+                                'callback'                 , @app.LOADING_SCRIPT_Callback, ...
+                                'parent'                   , app.FIGURE, ...
+                                'Units'                    , 'normalized',...
+                                'Position'                 , [0.05 0.445 0.1 0.05],...
+                                'tag'                      , 'USING_RAWDATA');
+                            
            app.USING_RAWDATA = uicontrol('style'           , 'radiobutton', ...
                                 'backgroundcolor'          , Background_Color, ...
                                 'string'                   , 'Using Raw Data', ...
@@ -539,8 +550,19 @@ classdef WORKSPACE_PLOTTER_OOP < handle
                     disp('ERROR: An error occured during the file loading.')
                     rethrow(err);
                 end
+                
+%                 LSD=app.LOADED_SCAN_DATA;
+                if get(app.LOADING_SCRIPT,'Value')
+                    script_path = get(app.LOADING_SCRIPT,'UserData');
+                    try 
+                        run(script_path)
+                    catch err
+                        display('Unable to execute script')
+                        display(err.message)
+                    end
+                end                    
                 LSD=app.LOADED_SCAN_DATA;
-
+                
                 set(app.LOAD, 'Enable', 'on');
                 set(app.RELOAD, 'String', 'RELOAD');
                 
@@ -1084,6 +1106,17 @@ classdef WORKSPACE_PLOTTER_OOP < handle
             end
         end
         
+        function LOADING_SCRIPT_Callback(app,hObject,eventdata)
+            if get(app.LOADING_SCRIPT,'Value')
+                [filename, pathname] = uigetfile('*.m','Please pick the loading script'); %open browse window
+                if filename==0    % user canceled?
+                    set(app.LOADING_SCRIPT,'Value',0)
+                    return;
+                end
+                set(app.LOADING_SCRIPT,'UserData',[pathname filename]);
+            end
+        end
+        
         function FFT_FILTER_Callback(app,hObject,eventdata)
             LSD=app.LOADED_SCAN_DATA;
             if get(app.FFT_FILTER,'Value')
@@ -1598,7 +1631,6 @@ classdef WORKSPACE_PLOTTER_OOP < handle
                 caxis([mu-3*sigma,mu+3*sigma]);
                 graph_title = get(app.plot2D.Title,'String');
                 
-                
             case 108 % l key => log
                 logdisplay = 1;
                 graph_title = get(app.plot2D.Title,'String');
@@ -1613,6 +1645,10 @@ classdef WORKSPACE_PLOTTER_OOP < handle
             case 109 % m key => min-max scale
                 M=app.extract_data_to_plot;
                 caxis([min(M(:)),max(M(:))]);
+                graph_title = get(app.plot2D.Title,'String'); 
+                
+            case 'p' % copy to clipboard
+                print -clipboard -dbitmap
                 graph_title = get(app.plot2D.Title,'String'); 
                 
             otherwise
@@ -1632,8 +1668,8 @@ classdef WORKSPACE_PLOTTER_OOP < handle
             drawnow;
             sigma=std(M(:));
             mu=mean(M(:));
-%             caxis([mu-3*sigma,mu+3*sigma]);
-            caxis([-11,-7]);
+            caxis([mu-3*sigma,mu+3*sigma]);
+%             caxis([-11,-7]);
 
         else
             set(app.plot2D.Legend,'String',graph_legend);

@@ -18,20 +18,20 @@ classdef Load_Manager < handle & scan_data
         function [obj] = Load_Manager(filepath, abort_handle)
         %'abort handle' argument is optionnal. Reference the object to check
         % when you want to allow load abortion of lvm files.
-            obj.filepath = filepath;
-            obj.filename = obj.remove_path(filepath);
-            
-            extension = filepath(end-2:end);
-            filetype = '';
-            if strcmp(extension,'lvm')
-                filetype = 'lvm';
-            elseif strcmp(extension,'mat')
-                filetype = 'mat';
-            elseif strcmp(extension,'.h5')
-                filetype = 'h5';
-            end
-            
             if nargin > 0
+                obj.filepath = filepath;
+                obj.filename = obj.remove_path(filepath);
+
+                extension = filepath(end-2:end);
+                filetype = '';
+                if strcmp(extension,'lvm')
+                    filetype = 'lvm';
+                elseif strcmp(extension,'mat')
+                    filetype = 'mat';
+                elseif strcmp(extension,'.h5')
+                    filetype = 'h5';
+                end
+           
                 try
                     switch filetype
                         case 'lvm'
@@ -63,14 +63,13 @@ classdef Load_Manager < handle & scan_data
         end
             
         function [obj] = h5file_loader(obj)
-        %         Patch to import batch (h5) files
+%         Patch to import batch (h5) files
             exp_bool = h5readatt(obj.filepath,'/configure/Meas_config','fast_mode');
             fast_mode = strcmp(exp_bool{1},'TRUE');
             ramp_mode = strcmp(exp_bool{2},'TRUE');
             comments = h5readatt(obj.filepath,'/Param_list','comments');
             sweep_dim = h5readatt(obj.filepath,'/Param_list','sweep_dim');
             readout_list = h5readatt(obj.filepath,'/Param_list','readout_list');
-%             if h5disp(
             sweep_list = h5readatt(obj.filepath,'/Param_list','sweep_list');
             
             %% RETRIEVE DATA
