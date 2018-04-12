@@ -542,25 +542,20 @@ classdef WORKSPACE_PLOTTER_OOP < handle
                 set(app.MESSAGE_DISPLAY,'Backgroundcolor', orange);
                 set(app.LOAD, 'Enable', 'off');
                 drawnow;
-
+                
+                if get(app.LOADING_SCRIPT,'Value')
+                    script_path = get(app.LOADING_SCRIPT,'UserData');
+                else
+                    script_path = '';
+                end  
+                
                 try
-                    app.LOADED_SCAN_DATA=Load_Manager(F,abort_handle);
+                    app.LOADED_SCAN_DATA=Load_Manager(F,script_path,abort_handle);
                 catch err
                     set(app.LOAD, 'Enable', 'on');
                     disp('ERROR: An error occured during the file loading.')
                     rethrow(err);
-                end
-                
-%                 LSD=app.LOADED_SCAN_DATA;
-                if get(app.LOADING_SCRIPT,'Value')
-                    script_path = get(app.LOADING_SCRIPT,'UserData');
-                    try 
-                        run(script_path)
-                    catch err
-                        display('Unable to execute script')
-                        display(err.message)
-                    end
-                end                    
+                end                  
                 LSD=app.LOADED_SCAN_DATA;
                 
                 set(app.LOAD, 'Enable', 'on');

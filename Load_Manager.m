@@ -15,7 +15,7 @@ classdef Load_Manager < handle & scan_data
 
     methods
         
-        function [obj] = Load_Manager(filepath, abort_handle)
+        function [obj] = Load_Manager(filepath,script_path,abort_handle)
         %'abort handle' argument is optionnal. Reference the object to check
         % when you want to allow load abortion of lvm files.
             if nargin > 0
@@ -48,7 +48,7 @@ classdef Load_Manager < handle & scan_data
                                 obj = a;
                             end
                         case 'h5'
-                            obj = obj.h5file_loader();
+                            obj = obj.h5file_loader(script_path);
                     end
                     
                 catch err
@@ -62,145 +62,77 @@ classdef Load_Manager < handle & scan_data
             end
         end
             
-        function [obj] = h5file_loader(obj)
-%         Patch to import batch (h5) files
-            exp_bool = h5readatt(obj.filepath,'/configure/Meas_config','fast_mode');
-            fast_mode = strcmp(exp_bool{1},'TRUE');
-            ramp_mode = strcmp(exp_bool{2},'TRUE');
-            comments = h5readatt(obj.filepath,'/Param_list','comments');
-            sweep_dim = h5readatt(obj.filepath,'/Param_list','sweep_dim');
-            readout_list = h5readatt(obj.filepath,'/Param_list','readout_list');
-            sweep_list = h5readatt(obj.filepath,'/Param_list','sweep_list');
-            
-            %% RETRIEVE DATA
-            obj.data = [];
-            for i=1:length(readout_list)
-                name = readout_list{i};
-                dataset = strcat('/data/',name);
-                new_data = h5read(obj.filepath,dataset);
-                if length(size(new_data))==2
-                    new_data = permute(new_data,[2,1]);
-                elseif length(size(new_data))==3
-                    new_data = permute(new_data,[3,2,1]);
-                end
-                obj.data = cat(4,obj.data,new_data);
-%                 obj.data = cat(4,obj.data,permute(h5read(obj.filepath,dataset),[2,1]));
-            end
-            
-            %% CREATE STRUCT
-            obj.Nsweep = size(obj.data,1);
-            obj.Nstep = size(obj.data,2);
-            obj.Nstep2 = size(obj.data,3);
-            obj.Nmeasure = size(obj.data,4);
-            data_size = [obj.Nsweep,obj.Nstep,obj.Nstep2,obj.Nmeasure];
+        function [obj] = h5file_loader(obj,script_path)
+        %% Patch to import batch (h5) files
+        [exp] = h5_import(obj.filepath);
         
-            obj.sweep_dim = scan_dimension();
-            obj.sweep_dim.used_param_number = 1;
-            obj.sweep_dim.param_infos={{'counter';'1';num2str(data_size(1));''}}; %name,start value,end value,units
-            obj.sweep_dim.param_values = linspace(1,data_size(1),data_size(1));
-
-            obj.step_dim = scan_dimension();
-            obj.step_dim.used_param_number = 1;
-            obj.step_dim.param_infos={{'counter';'1';num2str(data_size(2));''}}; %name,start value,end value,units
-            obj.step_dim.param_values = linspace(1,data_size(2),data_size(2));
-                        
-            obj.step2_dim = scan_dimension();
-            obj.step2_dim.used_param_number = 1;
-            obj.step2_dim.param_infos={{'counter';'1';num2str(data_size(3));''}}; %name,start value,end value,units
-            obj.step2_dim.param_values = linspace(1,data_size(3),data_size(3));
-
-            obj.measure_dim=scan_dimension();
-            obj.measure_dim.used_param_number = length(readout_list);
-           
-            for i=1:length(readout_list)
-                name = readout_list{i};
-                dataset = strcat('/data/',name);
-                unit = h5readatt(obj.filepath,dataset,'unit');
-                obj.measure_dim.param_infos{i} = {name;'';'';unit{1}};
+        %% BEFORE UPDATING THE GUI, HERE IS WHERE YOU CAN MODIFY THE DATA
+        if nargin>1 && ~strcmp(script_path,'')
+            try 
+                run(script_path)
+            catch err
+                display('Unable to execute script')
+                display(err.message)
             end
+        end
+        
+        %% NOW TIME TO UPDATE THE GUI
+        % Readout
+        obj.measure_dim=scan_dimension();
+        obj.measure_dim.used_param_number = length(exp.readout_list);
+        obj.data = [];
+        for i=1:length(exp.readout_list)
+            if size(exp.readout(i).data,4)>1
+                warning('Error importing h5 : data is more than 3-dimensional');
+                obj.data = cat(4,obj.data,exp.readout(i).data(:,:,:,1));
+            else
+                obj.data = cat(4,obj.data,exp.readout(i).data);
+            end
+            obj.measure_dim.param_infos{i} = {exp.readout(i).name;'';'';exp.readout(i).unit};
+        end
+        obj.Nsweep = size(obj.data,1);
+        obj.Nstep = size(obj.data,2);
+        obj.Nstep2 = size(obj.data,3);
+        obj.Nmeasure = size(obj.data,4);
+        
+        % Counters
+        obj.sweep_dim = scan_dimension();
+        obj.sweep_dim.used_param_number = 1;
+        obj.sweep_dim.param_infos={{'counter';'1';num2str(obj.Nsweep);''}}; %name,start value,end value,units
+        obj.sweep_dim.param_values = linspace(1,obj.Nsweep,obj.Nsweep);
+
+        obj.step_dim = scan_dimension();
+        obj.step_dim.used_param_number = 1;
+        obj.step_dim.param_infos={{'counter';'1';num2str(obj.Nstep);''}}; %name,start value,end value,units
+        obj.step_dim.param_values = linspace(1,obj.Nstep,obj.Nstep);
+
+        obj.step2_dim = scan_dimension();
+        obj.step2_dim.used_param_number = 1;
+        obj.step2_dim.param_infos={{'counter';'1';num2str(obj.Nstep2);''}}; %name,start value,end value,units
+        obj.step2_dim.param_values = linspace(1,obj.Nstep2,obj.Nstep2);
             
-            if fast_mode && ramp_mode
-                fast_channels_names = h5readatt(obj.filepath,'/configure/Meas_config','Fast_channel_name_list');
-                uint64s = h5readatt(obj.filepath,'/configure/fast_sequence','uint64s');
-                start_at = uint64s(end);
-                fast_seq = h5read(obj.filepath,'/configure/fast_sequence');
-%                 fast_seq = fast_seq(2:end-1,:); % removing trigger and jump
-                fast_seq = fast_seq(2+start_at:end-1,:); % removing pre-ramp elements
-                if size(fast_seq,1) ~= obj.Nsweep
-                    warning('Fast sequence not understood');
-                    display(strcat('fast sequence size is ',num2str(size(fast_seq,1)),', expected ',num2str(obj.Nsweep)));
-                else
-                    N_param_sweep = length(unique(fast_seq(:,1)));
-                    fast_channels_ids = uint64s(5:end-1);
-                    for i=1:N_param_sweep
-                        id = fast_seq(i,1);
-                        name = fast_channels_names{fast_channels_ids(id+1)+1};
-                        sub_arr = fast_seq(fast_seq(:,1)==id,2);
-                        val_list = linspace(sub_arr(1),sub_arr(end),obj.Nsweep);
-                        unit = 'V';
-                        index = obj.sweep_dim.used_param_number + 1;
-                        obj.sweep_dim.used_param_number = index;
-                        obj.sweep_dim.param_infos{index} = {['\delta ' name],num2str(val_list(1)),num2str(val_list(end)),unit};
-                        obj.sweep_dim.param_values(index,:) = val_list;
-                        
-                        init_move = h5read(obj.filepath,'/Initial_move');
-                        for j=1:length(init_move.value)
-                            param = strcat(init_move.name(:,j)');
-                            if strcmp(param,name)
-                                offset = init_move.value(j);
-                                val_list = val_list + offset;
-                                index = obj.sweep_dim.used_param_number + 1;
-                                obj.sweep_dim.used_param_number = index;
-                                obj.sweep_dim.param_infos{index} = {name,num2str(val_list(1)),num2str(val_list(end)),unit};
-                                obj.sweep_dim.param_values(index,:) = val_list;
-                            end
-                        end
-                    end
-                end
-            end
+        % Sweep
+        for i=1:length(exp.sweep_list)
+            info = {exp.sweep(i).name,num2str(exp.sweep(i).data(1)),num2str(exp.sweep(i).data(end)),exp.sweep(i).unit};
+            switch exp.sweep(i).dim
+                case 1
+                    index = obj.sweep_dim.used_param_number + 1;
+                    obj.sweep_dim.used_param_number = index;
+                    obj.sweep_dim.param_infos{index} = info;
+                    obj.sweep_dim.param_values(index,:) = exp.sweep(i).data;
+                case 2
+                    index = obj.step_dim.used_param_number + 1;
+                    obj.step_dim.used_param_number = index;
+                    obj.step_dim.param_infos{index} = info;
+                    obj.step_dim.param_values(index,:) = exp.sweep(i).data;
+                case 3
+                    index = obj.step2_dim.used_param_number + 1;
+                    obj.step2_dim.used_param_number = index;
+                    obj.step2_dim.param_infos{index} = info;
+                    obj.step2_dim.param_values(index,:) = exp.sweep(i).data;
+            end 
+        end
                 
-            for i=1:length(sweep_list)
-                name = sweep_list{i};
-                dataset = strcat('/',name);
-                unit = h5readatt(obj.filepath,dataset,'unit');
-                dim = h5readatt(obj.filepath,dataset,'dimension');
-                val_arr = h5read(obj.filepath,dataset);
-                if size(val_arr,4) > 1
-                    val_arr = permute(val_arr,[4,3,2,1]);
-                elseif size(val_arr,3) > 1
-                    val_arr = permute(val_arr,[3,2,1]);
-                elseif size(val_arr,2) > 1
-                    val_arr = permute(val_arr,[2,1]);
-                else 
-                    val_arr = val_arr;
-                end
-                
-                if fast_mode 
-                    dim = dim + 1;
-                    val_arr = reshape(val_arr,[1 size(val_arr)]);
-                end
-                switch dim
-                    case 1
-                        val_list = val_arr(:,1,1);
-                        index = obj.sweep_dim.used_param_number + 1;
-                        obj.sweep_dim.used_param_number = index;
-                        obj.sweep_dim.param_infos{index} = {name,num2str(val_list(1)),num2str(val_list(end)),unit{1}};
-                        obj.sweep_dim.param_values(index,:) = val_list;
-                    case 2
-                        val_list = val_arr(1,:,1);
-                        index = obj.step_dim.used_param_number + 1;
-                        obj.step_dim.used_param_number = index;
-                        obj.step_dim.param_infos{index} = {name,num2str(val_list(1)),num2str(val_list(end)),unit{1}};
-                        obj.step_dim.param_values(index,:) = val_list;
-                    case 3
-                        val_list = val_arr(1,1,:);
-                        index = obj.step2_dim.used_param_number + 1;
-                        obj.step2_dim.used_param_number = index;
-                        obj.step2_dim.param_infos{index} = {name,num2str(val_list(1)),num2str(val_list(end)),unit{1}};
-                        obj.step2_dim.param_values(index,:) = val_list;
-                end 
-                
-            end
         end
         
         function [obj] = lvmfile_loader(obj, abort_handle)

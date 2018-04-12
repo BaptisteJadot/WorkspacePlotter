@@ -880,12 +880,24 @@ classdef Spin_Plot < handle
             addOptional(p,'Path',defaultPath);
             parse(p,varargin{:});
             
-            app.LSD=p.Results.data;
+            app.LSD=p.Results.data;            
             app.PostSel=p.Results.PostSel;
             app.current_directory=p.Results.Path;
             if app.LSD==-1
                 return
             else
+                
+                %%% BAPTISTE SMOOTH
+                smooth_span = 1;
+                for j=1:size(app.LSD.data,2)
+                    for k=1:size(app.LSD.data,3)
+                        for l=1:size(app.LSD.data,4) 
+                            app.LSD.data(:,j,k,l) = smooth(app.LSD.data(:,j,k,l),smooth_span);   
+                        end
+                    end
+                end
+                %%%
+            
                 if app.PostSel==-1
                     app.PostSel=ones(app.LSD.Nstep,app.LSD.Nstep2);
                     app.add_line_to_dialog('WARNING: No PostSel matrix found in the argument list - all curves are kept by default');

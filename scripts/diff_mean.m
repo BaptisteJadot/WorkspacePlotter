@@ -1,17 +1,8 @@
-function obj = diff_mean(obj,range1,range2,channel,name)
-    if obj.seq_rep == 1
-        temp_data = zeros(obj.output_size(1),obj.output_size(2),1);
-    else
-        temp_data = zeros(obj.output_size(1:3));
-    end
-    for i=1:obj.seq_rep
-        r1 = range1 + (i-1)*obj.seq_length;
-        r2 = range2 + (i-1)*obj.seq_length;
-        temp_data(:,:,i) = squeeze(mean(obj.raw_data(r2,:,:,channel),1)...
-                                - mean(obj.raw_data(r1,:,:,channel),1));
-    end
-    obj.output_data = cat(4,obj.output_data,temp_data);
-    obj.output_size = size(obj.output_data);
-    obj.name_list = [obj.name_list name];
-    obj.unit_list = [obj.unit_list obj.input_LSD.measure_dim.param_infos{channel}{4}];
+function obj = diff_mean(readout,range1,range2,channel,name)
+    obj.name = name;
+    obj.unit = readout(channel).unit;
+    data_size = size(readout(channel).data);
+    obj.data = mean(readout(channel).data(range2,:),1)...
+                        -mean(readout(channel).data(range1,:),1);
+    obj.data = reshape(obj.data,data_size(2:end));
 end
