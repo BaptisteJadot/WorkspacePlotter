@@ -887,16 +887,16 @@ classdef Spin_Plot < handle
                 return
             else
                 
-                %%% BAPTISTE SMOOTH
-                smooth_span = 1;
-                for j=1:size(app.LSD.data,2)
-                    for k=1:size(app.LSD.data,3)
-                        for l=1:size(app.LSD.data,4) 
-                            app.LSD.data(:,j,k,l) = smooth(app.LSD.data(:,j,k,l),smooth_span);   
-                        end
-                    end
-                end
-                %%%
+%                 %%% BAPTISTE SMOOTH
+%                 smooth_span = 1;
+%                 for j=1:size(app.LSD.data,2)
+%                     for k=1:size(app.LSD.data,3)
+%                         for l=1:size(app.LSD.data,4) 
+%                             app.LSD.data(:,j,k,l) = smooth(app.LSD.data(:,j,k,l),smooth_span);   
+%                         end
+%                     end
+%                 end
+%                 %%%
             
                 if app.PostSel==-1
                     app.PostSel=ones(app.LSD.Nstep,app.LSD.Nstep2);
@@ -1005,7 +1005,7 @@ classdef Spin_Plot < handle
             app.add_line_to_dialog('LOADING NEW FILE... PLEASE WAIT');
             set(app.LOAD, 'Enable', 'off');
             drawnow; 
-            app.LSD=Load_Manager(F);
+            app.LSD=Load_Manager(F,'');
             set(app.LOAD, 'Enable', 'on');
 
             cla(app.axes1)                                                          % clear figures and dialog box
@@ -1855,7 +1855,7 @@ classdef Spin_Plot < handle
             else
                 Selected_data=app.LSD.data(:,:,step2start:step2stop,get(app.MEASURE_LINE,'Value'));
                 for k=1:(step2stop-step2start+1)
-                    Selected_data(:,:,k)=smooth2a(Selected_data(:,:,k),1,0);
+                    Selected_data(:,:,k)=smooth2a(Selected_data(:,:,k),3,0);
                     Selected_data(1:end-1,:,k)=diff(Selected_data(:,:,k));
                 end
                 Selected_data(app.LSD.Nsweep,:,:)=Selected_data(app.LSD.Nsweep-1,:,:);

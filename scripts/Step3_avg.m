@@ -10,8 +10,9 @@
 % % %                     sweep_list
 % % %                     scan_info : Char array describing exp
 
+run('Cat_exp.m');
 
 for i=1:length(exp.readout_list)
-    exp.readout(i).data = mean(exp.readout(i).data,4);
+    exp.readout(i).data = mean(exp.readout(i).data(:,:,:,:),4);
 end
 exp.data_size = exp.data_size(1:3);

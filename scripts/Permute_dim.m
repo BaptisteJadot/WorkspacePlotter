@@ -10,7 +10,7 @@
 % % %                     sweep_list
 % % %                     scan_info : Char array describing exp
 
-new_order = [2 1 3 4];
+new_order = [1 3 2];
 
 % Readout 
 for i=1:length(exp.readout_list)

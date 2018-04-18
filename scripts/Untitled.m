@@ -10,20 +10,41 @@
 % % %                     sweep_list
 % % %                     scan_info : Char array describing exp
 
-t = (0:exp.data_size(1)-1)*0.2;
-data = exp.readout(2).data;
-X_to_plot = 1:4:exp.data_size(2);
-Y_to_plot = 1:1:exp.data_size(3);
-avg_to_plot = 1:10:exp.data_size(4);
-Spin_2Dmap_plot_raw_data(t,data,X_to_plot,Y_to_plot,avg_to_plot,'');
+curves_to_show = 100;   % show only N random curves
+mode = 'above';
+threshold1 = 6.1;
+threshold2 = -0.1;
+sweep_window = 7:50;
 
-deriv = Spin_2Dmap_derivate(data);
-threshold_unload = 0.15;
-sweep_window_unload = 4:100;
-threshold_load = -0.15;
-sweep_window_load = 4:100;
-Spin_2Dmap_plot_deriv(t,deriv,X_to_plot,Y_to_plot,avg_to_plot,'',threshold_unload,sweep_window_unload,threshold_load,sweep_window_load)
+[data_out] = proba_raw(exp.readout(1).data,curves_to_show,mode,sweep_window,threshold1,threshold2);
 
-exp.data_size = exp.data_size(2:3);
-load_rising_edge = True;
-[N_loading_events,N_unloading_events] = Spin_2Dmap_count_events(deriv,threshold_unload,sweep_window_unload,threshold_load,sweep_window_load,load_rising_edge);
+exp.readout = [];
+exp.readout(1).name = 'Event count';
+exp.readout(1).unit = '';
+exp.readout(1).data = data_out;
+
+exp.data_size = size(data_out);
+exp.readout_list = {exp.readout(:).name};
+
+% Removing first dim of sweep
+for i=1:length(exp.sweep_list)
+    if exp.sweep(i).dim == 1
+        obj.sweep(i)=[];
+    else
+        exp.sweep(i).dim = exp.sweep(i).dim - 1;
+    end
+end
+exp.sweep_list = {exp.sweep(:).name}; 
+
+
+% new_order = [3 2 1];
+% % Readout 
+% for i=1:length(exp.readout_list)
+%     exp.readout(i).data = permute(exp.readout(i).data,new_order);
+% end
+% exp.data_size = exp.data_size(new_order(length(exp.data_size)));
+% 
+% % Sweep
+% for i=1:length(exp.sweep_list)
+%     exp.sweep(i).dim = new_order(exp.sweep(i).dim);
+% end

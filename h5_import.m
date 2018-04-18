@@ -94,9 +94,9 @@ function [obj] = h5_import(filepath)
                 sub_arr = fast_seq(fast_seq(:,1)==id,2);
                 val_list = linspace(sub_arr(1),sub_arr(end),data_size(1));
                 
-                index = length(obj.sweep)+1;
-                fast_sweep_list = [fast_sweep_list name];
-                obj.sweep(index).name = name;
+                index = length(obj.sweep)+1;                        
+                fast_sweep_list = [fast_sweep_list strcat('\delta ',name)];
+                obj.sweep(index).name = ['\delta ' name];
                 obj.sweep(index).unit = 'V';
                 obj.sweep(index).data = val_list;
                 obj.sweep(index).dim = 1;
@@ -108,8 +108,8 @@ function [obj] = h5_import(filepath)
                         offset = init_move.value(j);
                         val_list = val_list + offset;
                         
-                        fast_sweep_list = [fast_sweep_list strcat('\delta ',name)];
-                        obj.sweep(index+1).name = ['\delta ' name];
+                        fast_sweep_list = [fast_sweep_list name];
+                        obj.sweep(index+1).name = name;
                         obj.sweep(index+1).unit = 'V';
                         obj.sweep(index+1).data = val_list;
                         obj.sweep(index+1).dim = 1;
